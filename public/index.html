@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Tic Tac Toe</title>
+    <style>
+        body {
+            margin: auto;
+            font-family: sans-serif;
+            text-align: center;
+            font-size: 2em;
+        }
+        
+        div {
+            font: 1.4em bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div>Tic Tac Toe</div>
+    <!-- <ul id="messages"></ul>
+    <form id="form" action="">
+        <input id="input" autocomplete="off" /><button>Send</button>
+    </form> -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.3.1/p5.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.3.1/addons/p5.sound.min.js"></script> -->
+    <!-- <script src="./sketch.js"></script> -->
+    <script>
+        let socket = io();
+
+        socket.emit("chat message", "__init__")
+
+
+        let board;
+        let unit;
+        let gap;
+        let moves = 0;
+
+        let xTurn = true
+
+        let youAre;
+        let didYouKnowWhoYouAre = false;
+
+        let info;
+
+        function setup() {
+            size = min(window.innerWidth, window.innerHeight) * 0.8
+            createCanvas(size, size)
+            info = document.createElement('h2')
+            info.textContent = "Waiting for players..."
+            info.style.backgroundColor = "grey";
+            info.style.margin = "auto"
+            info.style.width = "50%";
+            document.body.appendChild(info)
+            background(200)
+            strokeWeight(10)
+            unit = width / 3
+            gap = unit * 0.1
+            board = []
+            for (let i = 0; i < 3; i++) {
+                board[i] = [];
+                board[i][0] = board[i][0] = board[i][0] = null;
+            }
+            frameRate(5)
+        }
+
+        function draw() {
+            background(220)
+            drawBoard()
+            update()
+            checkWin()
+            if (checkWin()) {
+                canvas.style.cursor = "not-allowed"
+                if (xTurn && youAre == "X" || !xTurn && youAre == "O") {
+                    info.textContent = "You Loose"
+                } else {
+                    info.textContent = "You won";
+                }
+            }
+        }
+
+        function checkWin() {
+            for (let i = 0; i < 3; i++) {
+
+                if (board[i][0] && (board[i][0] == board[i][1] && (board[i][0] == board[i][2]) || board[0][i] && board[0][i] == board[1][i] && board[0][i] == board[2][i])) {
+                    return true;
+                }
+
+            }
+            if (board[1][1] && ((board[0][0] == board[1][1] && board[0][0] == board[2][2]) || (board[0][2] == board[1][1] && board[2][0] == board[1][1]))) {
+                return true;
+            }
+
+            return false;
+        }
+
+        function update() {
+            if (xTurn && youAre == "X" || !xTurn && youAre == "O") {
+                info.textContent = "Your Turn!!!"
+                canvas.style.cursor = 'pointer'
+            } else {
+                info.textContent = "Opponents Turn!!!"
+                canvas.style.cursor = "not-allowed"
+            }
+        }
+
+        function mousePressed() {
+            let x = floor(map(mouseX, 0, width, 0, 3))
+            let y = floor(map(mouseY, 0, width, 0, 3))
+            if (x >= 0 && x <= 2 && y >= 0 && y <= 2) {
+                if ((!board[y][x] && (xTurn && youAre == "X" || !xTurn && youAre == "O") && !checkWin())) {
+                    if (moves % 2 == 0) board[y][x] = 'X'
+                    else board[y][x] = 'O'
+                    console.log(x, y)
+                        //moves++
+                    socket.emit('chat message', x.toString() + y.toString())
+
+                    console.log(moves)
+                }
+            }
+        }
+
+        function drawBoard() {
+            for (let y = 0; y < 3; y++) {
+                for (let x = 0; x < 3; x++) {
+                    putXO(board[y][x], x, y)
+                }
+            }
+            line(0, unit, width, unit)
+            line(0, 2 * unit, width, 2 * unit)
+            line(unit, 0, unit, height)
+            line(2 * unit, 0, 2 * unit, height)
+        }
+
+        function putXO(XO, x, y) {
+            x *= unit
+            y *= unit
+            if (XO == 'X') {
+                stroke(0)
+                line(x + gap, y + gap, x + unit - gap, y - gap + unit)
+                line(x + gap, y - gap + unit, x + unit - gap, y + gap)
+                    // console.log("drawn")
+            } else if (XO == "O") {
+                stroke(0)
+                noFill()
+                circle(x + unit / 2, y + unit / 2, unit - 2 * gap)
+            }
+        }
+
+        socket.on('chat message', msg => {
+            if (msg.startsWith("__")) {
+                if (!didYouKnowWhoYouAre) {
+                    youAre = msg[2]
+                    didYouKnowWhoYouAre = true;
+                    console.log(msg)
+                }
+            } else {
+                board[parseInt(msg[1])][parseInt(msg[0])] = ((moves++) % 2 == 0) ? "X" : "O";
+                xTurn = !xTurn
+            }
+        })
+    </script>
+
+    <!-- <script>
+        //let nickname = prompt("Enter your nickname so that others can see!")
+        let nickname = "gourav"
+        let socket = io();
+
+        socket.emit('chat message', nickname + " just joined the chat!")
+
+        let messages = document.getElementById('messages')
+        let form = document.getElementById("form")
+        let input = document.getElementById("input")
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (input.value) {
+                socket.emit('chat message', input.value)
+                input.value = ''
+            }
+        })
+
+        socket.on('chat message', function(msg) {
+            let item = document.createElement("li");
+            item.textContent = msg
+            messages.appendChild(item)
+            window.scrollTo(0, document.body.scrollHeight)
+        })
+    </script> -->
+</body>
+
+</html>
